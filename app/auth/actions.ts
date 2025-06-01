@@ -8,11 +8,24 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 
 export async function signInWithGoogle() {
   const supabase = await createClient()
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+                  (process.env.NODE_ENV === "development" ? 
+                   "http://localhost:3000" : undefined);
+
+  if (!siteUrl) {
+    console.error("Missing NEXT_PUBLIC_SITE_URL environment variable");
+  }
+  
+  console.log(`Using site URL for OAuth redirect: ${siteUrl}`);
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/callback`,
+      redirectTo: `${siteUrl}/auth/callback`,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      }
     },
   })
 
@@ -28,11 +41,15 @@ export async function signInWithGoogle() {
 
 export async function signInWithFacebook() {
   const supabase = await createClient()
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+                 (process.env.NODE_ENV === "development" ? 
+                  "http://localhost:3000" : undefined);
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "facebook",
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/callback`,
+      redirectTo: `${siteUrl}/auth/callback`,
+      scopes: 'email,public_profile',
     },
   })
 

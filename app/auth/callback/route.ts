@@ -6,9 +6,23 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get("code")
   const next = searchParams.get("next") ?? "/"
+  
+  // Debug logging for production
+  console.log(`Auth callback received. Code exists: ${!!code}, Next path: ${next}`);
+  console.log(`Request URL: ${request.url}`);
 
   if (code) {
     const supabase = await createClient()
+    
+    // Debug cookie handling
+    try {
+      const allCookies = request.headers.get('cookie') || '';
+      console.log(`Cookie header length: ${allCookies.length}`);
+      console.log(`Auth code: ${code.substring(0, 8)}...`);
+    } catch (err) {
+      console.error("Error logging cookie info:", err);
+    }
+    
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error && data.user) {
@@ -57,7 +71,7 @@ export async function GET(request: NextRequest) {
             plan_id: starterPlanId,
             start_date: new Date().toISOString(),
             is_active: true,
-            messages_used: 0, // Using correct field name with 's'
+            messages_used: 0,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
@@ -67,15 +81,13 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const forwardedHost = request.headers.get("x-forwarded-host")
-      const isLocalEnv = process.env.NODE_ENV === "development"
-      if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${next}`)
-      } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`)
-      } else {
-        return NextResponse.redirect(`${origin}${next}`)
-      }
+      // Get the appropriate base URL for redirecting
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin;
+      const redirectUrl = `${siteUrl}${next}`;
+      
+      console.log(`Redirecting to: ${redirectUrl}`);
+      
+      return NextResponse.redirect(redirectUrl);
     } else if (error) {
       console.error("Auth error:", error);
       // Log failed login attempt
@@ -85,5 +97,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+  // Get the site URL for error redirect
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin;
+  return NextResponse.redirect(`${siteUrl}/auth/auth-code-error`);
 }

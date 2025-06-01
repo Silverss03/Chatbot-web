@@ -3,8 +3,9 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Check, ChevronLeft } from "lucide-react"
+import { ChevronLeft } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { SubscriptionSuccessDialog } from "@/components/subscription/SuccessDialog"
 
 // Format VND currency
 const formatVND = (amount: number) => {
@@ -219,6 +220,9 @@ export default async function SubscriptionPage() {
           })}
         </div>
       </div>
+
+      {/* Success Dialog - Now loaded from client component */}
+      <SubscriptionSuccessDialog />
     </div>
   )
 }

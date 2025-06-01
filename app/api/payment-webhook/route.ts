@@ -95,11 +95,10 @@ export async function POST(request: NextRequest) {
     let matchMethod = 'unknown';
     
     // Define multiple patterns to extract transaction references
-    // New pattern specifically for the format seen in the webhook data
-    const bankContentPattern = /-TXN[a-zA-Z0-9]+(?=-)/; // Matches TXN followed by alphanumeric between hyphens
-    // Original patterns
-    const standardPattern = /TXN-\d+-[a-zA-Z0-9]{8}/;
-    const loosePattern = /TXN[a-zA-Z0-9-]+/;
+    // Update patterns to accommodate format without hyphen
+    const bankContentPattern = /-?TXN[a-zA-Z0-9]+(?=-)?/; // Match TXN with or without hyphen
+    const standardPattern = /TXN-?\d+-?[a-zA-Z0-9]{8}/; // Match old format with optional hyphens
+    const loosePattern = /TXN[a-zA-Z0-9-]*/; // Match any TXN followed by alphanumeric/hyphens
     
     // Extract TXN references using all patterns
     // First, try the bank-specific content pattern (highest priority)
@@ -379,6 +378,13 @@ export async function POST(request: NextRequest) {
       
       console.log(`Processing subscription upgrade for user ${user_id} to plan ${plan_id}`);
       
+      // Get plan name for success message
+      const { data: planData } = await supabaseAdmin
+        .from('subscription_plans')
+        .select('name')
+        .eq('id', plan_id)
+        .single();
+      
       // Save the bank's reference code to our transaction for future reference
       await supabaseAdmin
         .from('payment_transactions')
@@ -408,6 +414,7 @@ export async function POST(request: NextRequest) {
         success: true,
         message: 'Payment processed successfully',
         transactionId: transaction.id,
+        planName: planData?.name || 'Pro',
         matchMethod
       });
     } catch (err) {

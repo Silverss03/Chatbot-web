@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChevronLeft, AlertTriangle } from "lucide-react"
 import { CopyButton } from "@/components/CopyButton"
+import { PaymentStatusMonitor } from "@/components/PaymentStatusMonitor"
 
 // Format VND currency
 const formatVND = (amount: number) => {
@@ -33,6 +34,25 @@ const handleDatabaseError = (error: any) => {
     console.error("API key issue detected. Please check your environment configuration.");
   }
 };
+
+// Generate a random string that contains both letters and numbers
+function generateRandomString(length: number): string {
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // Removed confusing chars like O and I
+  const numbers = '23456789'; // Removed confusing chars like 0 and 1
+  const allChars = letters + numbers;
+  
+  // Start with at least one letter and one number
+  let result = letters.charAt(Math.floor(Math.random() * letters.length));
+  result += numbers.charAt(Math.floor(Math.random() * numbers.length));
+  
+  // Fill the rest randomly
+  for (let i = 2; i < length; i++) {
+    result += allChars.charAt(Math.floor(Math.random() * allChars.length));
+  }
+  
+  // Shuffle the string to avoid predictable pattern
+  return result.split('').sort(() => Math.random() - 0.5).join('');
+}
 
 export default async function TransactionPage({
   searchParams,
@@ -68,32 +88,54 @@ export default async function TransactionPage({
     redirect("/subscription")
   }
   
-  // Generate a transaction reference
-  const transactionRef = `TXN-${Date.now()}-${user.id.slice(0, 8)}`;
+  // First, check if there's an existing pending transaction for this user and plan
+  const { data: existingTransaction, error: existingTxError } = await supabase
+    .from('payment_transactions')
+    .select('reference')
+    .eq('user_id', user.id)
+    .eq('plan_id', planId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // Generate a transaction reference or use existing one
+  let transactionRef = '';
   let transactionCreated = false;
   
-  // Store the transaction reference in the database for later matching with webhook
-  try {
-    const { error: txnError } = await supabase
-      .from('payment_transactions')
-      .insert({
-        reference: transactionRef,
-        user_id: user.id,
-        plan_id: planId,
-        amount: plan.price || 0,
-        status: 'pending',
-        created_at: getVietnamTimestamp()
-      });
+  if (existingTransaction) {
+    // Use existing transaction reference to avoid duplicates
+    transactionRef = existingTransaction.reference;
+    transactionCreated = true;
+    console.log("Using existing transaction reference:", transactionRef);
+  } else {
+    // Generate a new unique transaction reference with both letters and numbers
+    const randomChars = generateRandomString(5); // Still 5 chars, but guaranteed to have letters & numbers
+    transactionRef = `TXN${randomChars}`;
     
-    if (txnError) {
-      handleDatabaseError(txnError);
-      // Continue anyway - not critical for page to work
-    } else {
-      transactionCreated = true;
+    // Store the transaction reference in the database for later matching with webhook
+    try {
+      const { error: txnError } = await supabase
+        .from('payment_transactions')
+        .insert({
+          reference: transactionRef,
+          user_id: user.id,
+          plan_id: planId,
+          amount: plan.price || 0,
+          status: 'pending',
+          created_at: getVietnamTimestamp()
+        });
+      
+      if (txnError) {
+        handleDatabaseError(txnError);
+        // Continue anyway - not critical for page to work
+      } else {
+        transactionCreated = true;
+      }
+    } catch (e) {
+      console.error("Failed to store transaction reference:", e);
+      // Continue without storing reference
     }
-  } catch (e) {
-    console.error("Failed to store transaction reference:", e);
-    // Continue without storing reference
   }
 
   return (
@@ -169,12 +211,12 @@ export default async function TransactionPage({
               <p className="text-xs mt-2">Mã giao dịch phải được nhập chính xác như trên.</p>
             </div>
             
-            {/* Add status checker */}
+            {/* Replace status checker with auto-monitor */}
             <div className="w-full mt-6 text-center">
-              <p className="text-sm text-gray-500 mb-2">Sau khi thanh toán, vui lòng chờ vài phút để hệ thống xử lý.</p>
-              <Button asChild variant="outline" className="mx-auto">
-                <Link href={`/subscription?check=${transactionRef}`}>Kiểm Tra Trạng Thái Thanh Toán</Link>
-              </Button>
+              <p className="text-sm text-gray-500 mb-2">Sau khi thanh toán, hệ thống sẽ xử lý và tự động thông báo.</p>
+              <div className="bg-gray-100 rounded p-3 flex items-center justify-center text-sm">
+                <PaymentStatusMonitor transactionRef={transactionRef} planName={plan.name} />
+              </div>
             </div>
           </CardContent>
           <CardFooter className="flex justify-center">

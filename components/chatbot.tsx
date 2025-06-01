@@ -36,6 +36,7 @@ export function Chatbot() {
   const [user, setUser] = useState<any>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const supabase = createClient()
 
   // Auto-scroll to latest messages
@@ -45,18 +46,28 @@ export function Chatbot() {
 
   // Auto-resize textarea based on content
   useEffect(() => {
-    const textarea = inputRef.current;
+    const textarea = textareaRef.current;
     if (!textarea) return;
     
-    // Reset height to compute the correct scrollHeight
-    textarea.style.height = 'auto';
+    const resizeTextarea = () => {
+      // Reset height first to get the correct scrollHeight
+      textarea.style.height = "0px";
+      
+      // Set the height based on content, with min/max limits
+      const newHeight = Math.min(
+        Math.max(textarea.scrollHeight, 38), // Min height
+        150 // Max height
+      );
+      textarea.style.height = `${newHeight}px`;
+    };
     
-    const newHeight = Math.min(
-      Math.max(textarea.scrollHeight, 38),
-      120
-    );
-    textarea.style.height = `${newHeight}px`;
-  }, [input]);
+    // Resize when input changes
+    resizeTextarea();
+    
+    // Also handle window resize events
+    window.addEventListener('resize', resizeTextarea);
+    return () => window.removeEventListener('resize', resizeTextarea);
+  }, [input]); // Depend on input state to trigger resize
 
   useEffect(() => {
     // Get current user
@@ -287,16 +298,17 @@ export function Chatbot() {
 
         <div className="flex gap-2 items-end">
           <Textarea
-            ref={inputRef}
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Type your message..."
             disabled={isLoading || !currentConversation}
-            className="resize-none min-h-[38px] max-h-[120px] overflow-y-auto"
+            className="resize-none min-h-[38px] overflow-y-auto"
             style={{
+              height: "38px", // Initial height
+              maxHeight: "150px",
               lineHeight: '1.5',
-              transition: 'height 0.1s ease'
             }}
           />
           <Button 

@@ -34,19 +34,20 @@ export function Chatbot() {
     }
   }, []);
 
-  // Auto-resize textarea based on content
+  // Auto-resize textarea properly when content changes
   useEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    // Reset height to compute the correct scrollHeight
-    textarea.style.height = "auto";
+    // Set height to 0 first to get the proper scrollHeight calculation
+    textarea.style.height = "0px";
 
-    // Set height to scroll height (content height) + some padding
+    // Set to scrollHeight to match content
     const newHeight = Math.min(
-      Math.max(textarea.scrollHeight, 38), // Minimum height
-      150 // Maximum height
+      Math.max(textarea.scrollHeight, 38), // Min height 38px
+      150 // Max height 150px
     );
+
     textarea.style.height = `${newHeight}px`;
   }, [message]);
 
@@ -191,16 +192,18 @@ export function Chatbot() {
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a message..."
-            className="resize-none flex-1 min-h-[38px] max-h-[150px] overflow-y-auto"
-            disabled={isLoading}
+            className="resize-none flex-1 min-h-[38px]"
             style={{
-              lineHeight: "1.5",
-              transition: "height 0.1s ease",
+              height: "38px", // Initial height
+              maxHeight: "150px",
+              overflowY: "auto",
             }}
+            disabled={isLoading}
           />
           <Button
             onClick={handleSendMessage}
             size="icon"
+            className="flex-shrink-0"
             disabled={!message.trim() || isLoading}
           >
             <Send className="h-4 w-4" />

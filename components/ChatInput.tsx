@@ -17,30 +17,35 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { isLimitReached, tier, messageUsed, messageLimit } = useSubscription();
   
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    
+    // Reset height to get correct scrollHeight
+    textarea.style.height = "0px";
+    
+    // Calculate new height based on content
+    const newHeight = Math.min(
+      Math.max(textarea.scrollHeight, 38), // Minimum height
+      150 // Maximum height
+    );
+    
+    textarea.style.height = `${newHeight}px`;
+  }, [message]); // Depend on message to trigger resize
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (message.trim() && !isLoading && !isLimitReached) {
       const currentMessage = message;
       setMessage('');
+      // Reset height of textarea after clearing message
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "38px";
+      }
       await onSendMessage(currentMessage);
     }
   };
-  
-  // Auto-resize textarea based on content height
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    
-    // Reset height to compute the correct scrollHeight
-    textarea.style.height = 'auto';
-    
-    // Set height to scroll height (content height) + some padding
-    const newHeight = Math.min(
-      Math.max(textarea.scrollHeight, 38), // Minimum 38px height (default input height)
-      150 // Maximum 150px height
-    );
-    textarea.style.height = `${newHeight}px`;
-  }, [message]);
   
   return (
     <div className="border-t bg-white p-4">
@@ -67,17 +72,18 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
           placeholder="Type your message here..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          className="flex-1 min-h-[38px] max-h-[150px] py-2 px-3 resize-none overflow-y-auto"
+          className="flex-1 min-h-[38px] overflow-y-auto"
+          style={{
+            height: "38px", // Initial height
+            maxHeight: "150px",
+            lineHeight: '1.5'
+          }}
           disabled={isLoading || isLimitReached}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
               handleSubmit(e);
             }
-          }}
-          style={{
-            lineHeight: '1.5',
-            transition: 'height 0.1s ease'
           }}
         />
         <Button 

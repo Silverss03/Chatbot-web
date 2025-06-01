@@ -37,10 +37,10 @@ export async function LoginHistory() {
     const loginTime = new Date(timestamp)
     const diffInMinutes = Math.floor((now.getTime() - loginTime.getTime()) / (1000 * 60))
 
-    if (diffInMinutes < 1) return "Just now"
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
-    return `${Math.floor(diffInMinutes / 1440)}d ago`
+    if (diffInMinutes < 1) return "Vừa xong"
+    if (diffInMinutes < 60) return `${diffInMinutes} phút trước`
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} giờ trước`
+    return `${Math.floor(diffInMinutes / 1440)} ngày trước`
   }
 
   return (
@@ -48,9 +48,9 @@ export async function LoginHistory() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <History className="h-5 w-5" />
-          Login History
+          Lịch sử đăng nhập
         </CardTitle>
-        <CardDescription>Your recent authentication activity</CardDescription>
+        <CardDescription>Hoạt động xác thực gần đây của bạn</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {loginHistory && loginHistory.length > 0 ? (
@@ -63,13 +63,13 @@ export async function LoginHistory() {
                   <XCircle className="h-4 w-4 text-red-500" />
                 )}
                 <div>
-                  <p className="text-sm font-medium">{entry.login_success ? "Successful Login" : "Failed Login"}</p>
+                  <p className="text-sm font-medium">{entry.login_success ? "Đăng nhập thành công" : "Đăng nhập thất bại"}</p>
                   <p className="text-xs text-muted-foreground">{formatDate(entry.login_timestamp)}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant={entry.login_success ? "default" : "destructive"}>
-                  {entry.login_success ? "Success" : "Failed"}
+                  {entry.login_success ? "Thành công" : "Thất bại"}
                 </Badge>
                 <div className="flex items-center text-xs text-muted-foreground">
                   <Clock className="h-3 w-3 mr-1" />
@@ -81,7 +81,7 @@ export async function LoginHistory() {
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <History className="h-8 w-8 mx-auto mb-2" />
-            <p>No login history available</p>
+            <p>Không có lịch sử đăng nhập</p>
           </div>
         )}
       </CardContent>

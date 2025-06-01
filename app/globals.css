@@ -18,6 +18,22 @@ body {
   .auto-resize-textarea {
     @apply resize-none min-h-[38px] overflow-y-auto transition-height duration-100 ease-in;
   }
+
+  /* Fix chat layout issues */
+  .chat-container {
+    @apply flex flex-col;
+    min-height: 500px;
+    height: 100%;
+  }
+
+  .chat-messages {
+    @apply flex-1 overflow-y-auto;
+    min-height: 300px;
+  }
+
+  .chat-input-container {
+    @apply border-t border-[#e5e7eb] p-4 bg-white;
+  }
 }
 
 @layer base {

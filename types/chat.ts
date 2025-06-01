@@ -1,10 +1,10 @@
 export type MessageRole = 'user' | 'assistant' | 'system';
 
 export interface ChatMessage {
-  id: string;
+  id?: string;
   role: MessageRole;
   content: string;
-  timestamp: Date;
+  timestamp?: Date;
 }
 
 export type ChatHistory = ChatMessage[];
@@ -15,14 +15,22 @@ export interface Message {
 }
 
 export interface ChatRequestBody {
-  messages: Message[];
+  messages: Array<{
+    role: string;
+    content: string;
+  }>;
+  conversation_id?: string;
 }
 
 export interface ChatResponseBody {
-  message: Message;
+  message: {
+    role: string;
+    content: string;
+  };
   usage?: {
     current: number;
     limit: number;
     limitReached: boolean;
   };
+  conversation_id?: string;
 }

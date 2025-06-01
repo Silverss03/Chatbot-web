@@ -17,6 +17,13 @@ export default async function HomePage() {
     redirect("/login")
   }
 
+  // Pre-load the user's conversations on the server
+  const { data: conversations } = await supabase
+    .from('conversations')
+    .select('id, title, updated_at')
+    .eq('user_id', user.id)
+    .order('updated_at', { ascending: false });
+
   // Get user profile
   const { data: profile } = await supabase
     .from("profiles")
@@ -25,7 +32,7 @@ export default async function HomePage() {
     .single()
 
   // Determine display name and identifier
-  const displayName = profile?.full_name || "User"
+  const displayName = profile?.full_name || "Người dùng"
   const displayIdentifier = profile?.phone || profile?.email || user.email
 
   return (
@@ -117,15 +124,11 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* Main Content - Chatbot */}
-      <main className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-4xl bg-white rounded-lg shadow-sm border p-6 h-[calc(100vh-180px)] flex flex-col">
-          <h2 className="text-2xl font-bold mb-6 text-center">Chào Mừng Đến Với Trợ Lý AI</h2>
-          
-          {/* Full-height chatbot */}
-          <div className="flex-1 overflow-hidden">
-            <ChatInterface />
-          </div>
+      {/* Main Content - Chatbot with sidebar */}
+      <main className="flex-1 flex">
+        <div className="w-full flex h-[calc(100vh-130px)]">
+          {/* Pass initial conversations to ChatInterface */}
+          <ChatInterface initialConversations={conversations || []} />
         </div>
       </main>
     </div>

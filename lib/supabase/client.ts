@@ -1,19 +1,24 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
-// Cache the client instance for better performance
+// Cache client for performance
 let cachedClient: ReturnType<typeof createClientComponentClient> | null = null;
 
 export const createClient = () => {
   if (cachedClient) return cachedClient;
 
+  console.log("[Supabase Client] Creating new Supabase client");
+  
   cachedClient = createClientComponentClient({
-    cookieOptions: {
-      name: 'sb-auth-token',
-      lifetime: 60 * 60 * 24 * 7, // 1 week
-      domain: process.env.NODE_ENV === 'development' ? 'localhost' : undefined,
-      path: '/',
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV !== 'development',
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    options: {
+      db: {
+        schema: 'public',
+      },
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+      },
     }
   });
   

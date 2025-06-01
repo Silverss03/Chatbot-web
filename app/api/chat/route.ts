@@ -22,6 +22,91 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Parse request body
+    const body = await request.json();
+    const { messages, conversation_id } = body;
+    
+    // Validate input
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return NextResponse.json(
+        { error: 'Invalid request. Messages array is required.' }, 
+        { status: 400 }
+      );
+    }
+
+    let currentConversationId = conversation_id;
+
+    // If no conversation_id provided, create a new conversation
+    if (!currentConversationId) {
+      try {
+        // Generate title from the first user message
+        let conversationTitle = "New Conversation";
+        
+        // Find the first user message to use as title
+        const firstUserMessage = messages.find(msg => msg.role === 'user');
+        if (firstUserMessage) {
+          // Use first 30 chars of message as title or full message if shorter
+          conversationTitle = firstUserMessage.content.length > 30
+            ? `${firstUserMessage.content.substring(0, 30)}...`
+            : firstUserMessage.content;
+        }
+
+        // Create a new conversation
+        const { data: newConversation, error: convError } = await supabase
+          .from('conversations')
+          .insert({
+            user_id: user.id,
+            title: conversationTitle,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (convError) {
+          console.error("[API] Error creating conversation:", convError);
+          // Continue without conversation tracking
+        } else if (newConversation) {
+          currentConversationId = newConversation.id;
+          
+          // Verify the new conversation exists
+          const { data: checkData, error: checkError } = await supabase
+            .from('conversations')
+            .select('id, title')
+            .eq('id', currentConversationId)
+            .single();
+            
+          if (checkError) {
+            console.error("[API] Error verifying conversation:", checkError);
+          }
+        }
+      } catch (err) {
+        console.error("[API] Failed to create new conversation:", err);
+        // Continue without conversation tracking
+      }
+    } else {
+      // Verify the conversation belongs to the user
+      const { data: conversation, error } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('id', currentConversationId)
+        .eq('user_id', user.id)
+        .single();
+        
+      if (error || !conversation) {
+        return NextResponse.json(
+          { error: 'Invalid conversation ID' }, 
+          { status: 403 }
+        );
+      }
+
+      // Update conversation timestamp
+      await supabase
+        .from('conversations')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', currentConversationId);
+    }
+
     // Check cache first for subscription data
     const now = Date.now();
     const cachedSubscription = userSubscriptionCache.get(user.id);
@@ -30,7 +115,6 @@ export async function POST(request: NextRequest) {
     
     if (cachedSubscription && cachedSubscription.expiry > now) {
       // Use cached data if available and not expired
-      console.log("Using cached subscription data");
       subscriptionData = cachedSubscription.data;
     } else {
       // Otherwise, query the database
@@ -105,13 +189,11 @@ export async function POST(request: NextRequest) {
     const messagesUsed = subscriptionData?.messages_used || 0;
     const messageLimit = subscriptionData?.subscription_plans?.message_limit || 10;
     
-    console.log("Plan check:", { planName, messagesUsed, messageLimit });
-    
     // Check if user has exceeded limit - using strict comparison
     if (planName === 'Starter' && messagesUsed >= messageLimit) {
       return NextResponse.json(
         { 
-          error: 'Message limit reached. Please upgrade your subscription.', 
+          error: 'Đã đạt giới hạn tin nhắn. Vui lòng nâng cấp gói dịch vụ của bạn.', 
           usage: {
             current: messagesUsed,
             limit: messageLimit,
@@ -119,18 +201,6 @@ export async function POST(request: NextRequest) {
           }
         }, 
         { status: 402 }
-      );
-    }
-
-    // Parse request body
-    const body = await request.json() as ChatRequestBody;
-    const { messages } = body;
-    
-    // Validate input
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json(
-        { error: 'Invalid request. Messages array is required.' }, 
-        { status: 400 }
       );
     }
 
@@ -148,14 +218,57 @@ export async function POST(request: NextRequest) {
     // Extract the response
     const responseMessage = completion.choices[0].message;
 
-    // Log conversation to database
+    // Save user message to the conversation if we have a conversation ID
+    if (currentConversationId) {
+      try {
+        // Find the last user message to save
+        const lastUserMessage = [...messages].reverse().find(msg => msg.role === 'user');
+        if (lastUserMessage) {
+          const { error: msgError } = await supabase.from("messages").insert({
+            conversation_id: currentConversationId,
+            content: lastUserMessage.content,
+            role: "user",
+            created_at: new Date().toISOString(),
+            user_id: user.id
+          });
+          
+          if (msgError) {
+            console.error("[API] Error saving user message:", msgError);
+          }
+        }
+      } catch (err) {
+        console.error("[API] Failed to save user message:", err);
+      }
+    }
+
+    // Instead of inserting to conversations table, use chat_history
     await supabase.from('chat_history').insert({
       user_id: user.id,
+      conversation_id: currentConversationId,
       messages: messages,
       response: responseMessage,
       timestamp: new Date().toISOString(),
     });
     
+    // Save assistant response to conversation if we have a conversation ID
+    if (currentConversationId && responseMessage) {
+      try {
+        const { error: msgError } = await supabase.from("messages").insert({
+          conversation_id: currentConversationId,
+          content: responseMessage.content || '',
+          role: "assistant",
+          created_at: new Date().toISOString(),
+          user_id: user.id
+        });
+        
+        if (msgError) {
+          console.error("[API] Failed to save assistant message:", msgError);
+        }
+      } catch (err) {
+        console.error("[API] Error saving assistant message:", err);
+      }
+    }
+
     // Update message usage count if subscription exists - using correct field name
     const newMessageCount = messagesUsed + 1;
     if (subscriptionData) {
@@ -197,7 +310,8 @@ export async function POST(request: NextRequest) {
         role: responseMessage.role,
         content: responseMessage.content || '',
       },
-      usage: usageInfo
+      usage: usageInfo,
+      conversation_id: currentConversationId
     };
 
     return NextResponse.json(response);

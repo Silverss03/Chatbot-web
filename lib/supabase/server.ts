@@ -12,10 +12,6 @@ export async function createClient() {
     ? parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT) 
     : DEFAULT_TIMEOUT;
 
-  // Log available cookies for debugging
-  const cookieList = cookieStore.getAll();
-  console.log(`Available cookies (${cookieList.length}):`, cookieList.map(c => c.name).join(', '));
-
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -23,11 +19,6 @@ export async function createClient() {
       cookies: {
         get(name) {
           const cookie = cookieStore.get(name);
-          if (!cookie) {
-            console.log(`Cookie not found: ${name}`);
-          } else {
-            console.log(`Cookie found: ${name}, length: ${cookie.value.length}`);
-          }
           return cookie?.value;
         },
         set(name, value, options) {
@@ -39,10 +30,8 @@ export async function createClient() {
                 secure: false,
                 sameSite: "lax"
               });
-              console.log(`Cookie set (dev): ${name}, length: ${value.length}`);
             } else {
               cookieStore.set(name, value, options);
-              console.log(`Cookie set (prod): ${name}, length: ${value.length}`);
             }
           } catch (err) {
             console.error(`Error setting cookie ${name}:`, err);
@@ -51,7 +40,6 @@ export async function createClient() {
         remove(name, options) {
           try {
             cookieStore.set(name, "", { ...options, maxAge: 0 });
-            console.log(`Cookie removed: ${name}`);
           } catch (err) {
             console.error(`Error removing cookie ${name}:`, err);
           }

@@ -54,7 +54,7 @@ export function ConversationSidebar({
       
       setConversations(data || []);
     } catch (err) {
-      setError("Đã xảy ra lỗi khi tải cuộc trò chuyện");
+      setError("Không có cuộc trò chuyện");
     } finally {
       setIsLoading(false);
     }

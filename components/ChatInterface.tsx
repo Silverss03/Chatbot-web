@@ -10,7 +10,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { User, Bot, MessageSquare } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { ConversationSidebar } from "@/components/ConversationSidebar";
-import { DebugMessageViewer } from "@/components/debug/MessageViewer";
 
 // Define message type
 interface Message {
@@ -42,7 +41,6 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
   const [error, setError] = useState<string | null>(null);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
-  const [showDebugTools, setShowDebugTools] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -54,18 +52,14 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
   // Improved loadConversation function with better debugging
   const loadConversation = async (conversationId: string) => {
     try {
-      console.log(`[ChatInterface] Loading messages for conversation: ${conversationId}`);
       setIsLoadingConversation(true);
       setMessages([]); // Clear current messages
       setError(null);
       
       if (!conversationId) {
-        console.error("[ChatInterface] Invalid conversation ID:", conversationId);
         setIsLoadingConversation(false);
         return;
       }
-      
-      console.log(`[ChatInterface] Fetching messages with conversation_id=${conversationId}`);
       
       // Explicitly query for all columns in the messages table to ensure we get everything
       const { data, error } = await supabase
@@ -74,31 +68,15 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
       
-      // Log raw response for debugging
-      console.log("[ChatInterface] Messages query response:", {
-        success: !error,
-        count: data?.length || 0,
-        error: error ? error.message : null
-      });
-      
       if (error) {
-        console.error("[ChatInterface] Error loading messages:", error);
         setError(`Failed to load messages: ${error.message}`);
         return;
       }
       
       if (!data || data.length === 0) {
-        console.log("[ChatInterface] No messages found for this conversation");
         // Instead of showing an error, we'll show an empty conversation
         setMessages([]);
         return;
-      }
-      
-      console.log("[ChatInterface] Loaded messages:", data.length);
-      
-      // Debug: Log the first message to check its structure
-      if (data.length > 0) {
-        console.log("[ChatInterface] Sample message:", JSON.stringify(data[0]));
       }
       
       // Format messages for the chat interface
@@ -107,10 +85,8 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
         content: msg.content
       }));
       
-      console.log("[ChatInterface] Formatted messages:", formattedMessages.length);
       setMessages(formattedMessages);
     } catch (err) {
-      console.error("[ChatInterface] Failed to load conversation messages:", err);
       setError('Failed to load conversation messages');
     } finally {
       setIsLoadingConversation(false);
@@ -125,23 +101,13 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
       setInput('');
       setError(null);
     } catch (err) {
-      console.error("Error creating new conversation:", err);
+      // Error handled in UI already
     }
   };
   
   // Select an existing conversation with additional logging
   const selectConversation = (conversationId: string) => {
-    console.log("[ChatInterface] Selecting conversation:", conversationId);
     setCurrentConversationId(conversationId);
-    
-    // Log the conversation details before loading messages
-    supabase
-      .from("conversations")
-      .select("*")
-      .eq("id", conversationId)
-      .single()
-      .then(({ data }) => console.log("[ChatInterface] Selected conversation:", data))
-      .catch(err => console.error("[ChatInterface] Error fetching conversation details:", err));
       
     // Load messages
     loadConversation(conversationId);
@@ -217,7 +183,6 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
       }
       
     } catch (err) {
-      console.error('Error sending message:', err);
       setError('Không thể gửi tin nhắn. Vui lòng thử lại.');
     } finally {
       setIsLoading(false);
@@ -239,34 +204,10 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          console.log("[ChatInterface] No authenticated user");
           return;
         }
-        
-        console.log("[ChatInterface] Running conversations check for user:", user.id);
-        
-        // Check conversations table
-        const { data, error } = await supabase
-          .from('conversations')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('updated_at', { ascending: false });
-          
-        console.log("[ChatInterface] Conversations check result:", {
-          success: !error,
-          count: data?.length || 0,
-          error: error || 'none'
-        });
-        
-        if (data && data.length > 0) {
-          console.log("[ChatInterface] Found conversations:", 
-            data.map(c => ({ id: c.id, title: c.title, updated: c.updated_at }))
-          );
-        } else {
-          console.log("[ChatInterface] No conversations found for user");
-        }
       } catch (err) {
-        console.error("[ChatInterface] Error checking conversations:", err);
+        // Error handled silently 
       }
     };
     
@@ -276,17 +217,13 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
   // Add explicit initialization for the conversation list
   useEffect(() => {
     const initializeChat = async () => {
-      try {
-        console.log("[ChatInterface] Initializing chat interface");
-        
+      try {        
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          console.log("[ChatInterface] No authenticated user found");
           return;
         }
         
         // Check if the user has any existing conversations
-        console.log("[ChatInterface] Checking for existing conversations");
         const { data: conversations, error } = await supabase
           .from('conversations')
           .select('id')
@@ -295,20 +232,16 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
           .limit(1);
           
         if (error) {
-          console.error("[ChatInterface] Error checking conversations:", error);
           return;
         }
         
         // If there's at least one conversation, load the most recent one
         if (conversations && conversations.length > 0) {
-          console.log("[ChatInterface] Found existing conversation, loading:", conversations[0].id);
           setCurrentConversationId(conversations[0].id);
           loadConversation(conversations[0].id);
-        } else {
-          console.log("[ChatInterface] No existing conversations found");
         }
       } catch (err) {
-        console.error("[ChatInterface] Error initializing chat:", err);
+        // Error handled silently
       }
     };
     
@@ -317,32 +250,27 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
   
   // Add explicit function to fetch conversations that can be passed to sidebar
   const fetchConversations = async () => {
-    try {
-      console.log("[ChatInterface] Explicitly fetching conversations");
-      
+    try {      
       const { data, error } = await supabase
         .from("conversations")
         .select("*")
         .order("updated_at", { ascending: false });
         
       if (error) {
-        console.error("[ChatInterface] Error fetching conversations:", error);
+        return [];
       } else if (data) {
-        console.log("[ChatInterface] Fetched conversations:", data.length);
         setConversationList(data);
         return data;
       }
       
       return [];
     } catch (err) {
-      console.error("[ChatInterface] Exception fetching conversations:", err);
       return [];
     }
   };
   
   // Use effect to log initialConversations on mount
   useEffect(() => {
-    console.log("[ChatInterface] Mounted with initial conversations:", initialConversations.length);
     if (initialConversations.length > 0) {
       setConversationList(initialConversations);
     } else {
@@ -498,25 +426,6 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
             </Button>
           </form>
         </div>
-        
-        {/* Show debug tool button */}
-        <div className="absolute bottom-4 right-4 z-10">
-          <Button
-            variant="outline"
-            size="sm"
-            className="opacity-50 hover:opacity-100"
-            onClick={() => setShowDebugTools(!showDebugTools)}
-          >
-            Debug
-          </Button>
-        </div>
-        
-        {/* Debug tools */}
-        {showDebugTools && (
-          <div className="fixed bottom-20 right-4 z-20 bg-white shadow-lg border p-4 rounded-md w-96">
-            <DebugMessageViewer conversationId={currentConversationId} />
-          </div>
-        )}
       </div>
     </div>
   );

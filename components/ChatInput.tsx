@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SendIcon } from "lucide-react";
@@ -14,6 +14,7 @@ interface ChatInputProps {
 
 export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
   const [message, setMessage] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { isLimitReached, tier, messageUsed, messageLimit } = useSubscription();
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,6 +25,22 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
       await onSendMessage(currentMessage);
     }
   };
+  
+  // Auto-resize textarea based on content height
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    
+    // Reset height to compute the correct scrollHeight
+    textarea.style.height = 'auto';
+    
+    // Set height to scroll height (content height) + some padding
+    const newHeight = Math.min(
+      Math.max(textarea.scrollHeight, 38), // Minimum 38px height (default input height)
+      150 // Maximum 150px height
+    );
+    textarea.style.height = `${newHeight}px`;
+  }, [message]);
   
   return (
     <div className="border-t bg-white p-4">
@@ -46,17 +63,21 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
       
       <form onSubmit={handleSubmit} className="flex gap-2 items-end">
         <Textarea
+          ref={textareaRef}
           placeholder="Type your message here..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          className="flex-1 resize-none"
+          className="flex-1 min-h-[38px] max-h-[150px] py-2 px-3 resize-none overflow-y-auto"
           disabled={isLoading || isLimitReached}
-          rows={1}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
               handleSubmit(e);
             }
+          }}
+          style={{
+            lineHeight: '1.5',
+            transition: 'height 0.1s ease'
           }}
         />
         <Button 

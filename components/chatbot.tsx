@@ -1,10 +1,10 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Bot, Send, User, Plus } from "lucide-react"
@@ -34,7 +34,29 @@ export function Chatbot() {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [user, setUser] = useState<any>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
+
+  // Auto-scroll to latest messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, isLoading])
+
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    
+    // Reset height to compute the correct scrollHeight
+    textarea.style.height = 'auto';
+    
+    const newHeight = Math.min(
+      Math.max(textarea.scrollHeight, 38),
+      120
+    );
+    textarea.style.height = `${newHeight}px`;
+  }, [input]);
 
   useEffect(() => {
     // Get current user
@@ -78,7 +100,7 @@ export function Chatbot() {
     }
   }
 
-  const createNewConversation = async () => {
+  const createNewConversation = useCallback(async () => {
     if (!user) return
 
     const { data, error } = await supabase
@@ -97,9 +119,9 @@ export function Chatbot() {
       setMessages([])
       loadConversations(user.id)
     }
-  }
+  }, [user, supabase])
 
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     if (!input.trim() || !currentConversation || !user) return
 
     const userMessage: Message = {
@@ -154,7 +176,7 @@ export function Chatbot() {
         .update({ updated_at: new Date().toISOString() })
         .eq("id", currentConversation)
     }, 1000)
-  }
+  }, [input, currentConversation, user, setMessages, setInput, setIsLoading])
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -163,10 +185,10 @@ export function Chatbot() {
     }
   }
 
-  const switchConversation = (conversationId: string) => {
+  const switchConversation = useCallback((conversationId: string) => {
     setCurrentConversation(conversationId)
     loadMessages(conversationId)
-  }
+  }, [loadMessages])
 
   return (
     <Card className="h-full flex flex-col">
@@ -259,18 +281,29 @@ export function Chatbot() {
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
-        <div className="flex gap-2">
-          <Input
+        <div className="flex gap-2 items-end">
+          <Textarea
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Type your message..."
             disabled={isLoading || !currentConversation}
+            className="resize-none min-h-[38px] max-h-[120px] overflow-y-auto"
+            style={{
+              lineHeight: '1.5',
+              transition: 'height 0.1s ease'
+            }}
           />
-          <Button onClick={handleSend} disabled={isLoading || !input.trim() || !currentConversation}>
+          <Button 
+            onClick={handleSend} 
+            disabled={isLoading || !input.trim() || !currentConversation}
+            className="flex-shrink-0"
+          >
             <Send className="h-4 w-4" />
           </Button>
         </div>

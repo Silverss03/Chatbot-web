@@ -5,11 +5,14 @@ import { trackLogin } from "@/lib/login-tracker"
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get("code")
-  const next = searchParams.get("next") ?? "/"
+  // Default next path to "/" explicitly and log it for debugging
+  const next = searchParams.get("next") || "/"
   
-  // Debug logging for production
-  console.log(`Auth callback received. Code exists: ${!!code}, Next path: ${next}`);
+  // Enhanced debug logging
+  console.log(`Auth callback received. Code exists: ${!!code}, Next path: '${next}'`);
   console.log(`Request URL: ${request.url}`);
+  console.log(`Origin: ${origin}`);
+  console.log(`NEXT_PUBLIC_SITE_URL: ${process.env.NEXT_PUBLIC_SITE_URL || 'not set'}`);
 
   if (code) {
     const supabase = await createClient()
@@ -83,11 +86,16 @@ export async function GET(request: NextRequest) {
 
       // Get the appropriate base URL for redirecting
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin;
-      const redirectUrl = `${siteUrl}${next}`;
+      console.log(`Using site URL: ${siteUrl} for redirect`);
+      
+      // Force redirect to home page directly rather than using 'next' parameter
+      // This ensures we go to the home page after login
+      const redirectUrl = `${siteUrl}/`;
       
       console.log(`Redirecting to: ${redirectUrl}`);
       
-      return NextResponse.redirect(redirectUrl);
+      // Use temporary redirect (307) instead of permanent (308)
+      return NextResponse.redirect(redirectUrl, { status: 307 });
     } else if (error) {
       console.error("Auth error:", error);
       // Log failed login attempt

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Send, User, Bot, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ export function Chatbot() {
   const [isLoading, setIsLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatHistory>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Scroll to bottom of chat window whenever messages change
   useEffect(() => {
@@ -33,7 +34,24 @@ export function Chatbot() {
     }
   }, []);
 
-  const handleSendMessage = async () => {
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    // Reset height to compute the correct scrollHeight
+    textarea.style.height = "auto";
+
+    // Set height to scroll height (content height) + some padding
+    const newHeight = Math.min(
+      Math.max(textarea.scrollHeight, 38), // Minimum height
+      150 // Maximum height
+    );
+    textarea.style.height = `${newHeight}px`;
+  }, [message]);
+
+  // Optimize message sending with useCallback
+  const handleSendMessage = useCallback(async () => {
     if (!message.trim() || isLoading) return;
 
     // Add user message to chat
@@ -95,7 +113,7 @@ export function Chatbot() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [message, isLoading, chatHistory]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -104,10 +122,10 @@ export function Chatbot() {
     }
   };
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Chat messages container */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+  // Memoize the chat messages to prevent unnecessary re-renders
+  const ChatMessages = memo(function ChatMessages() {
+    return (
+      <>
         {chatHistory.map((msg) => (
           <div
             key={msg.id}
@@ -138,6 +156,15 @@ export function Chatbot() {
             </div>
           </div>
         ))}
+      </>
+    );
+  });
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Chat messages container */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <ChatMessages />
 
         {/* Loading indicator */}
         {isLoading && (
@@ -157,16 +184,19 @@ export function Chatbot() {
 
       {/* Message input */}
       <div className="border-t p-4">
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-end">
           <Textarea
+            ref={textareaRef}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a message..."
-            className="resize-none flex-1"
-            rows={1}
-            maxRows={5}
+            className="resize-none flex-1 min-h-[38px] max-h-[150px] overflow-y-auto"
             disabled={isLoading}
+            style={{
+              lineHeight: "1.5",
+              transition: "height 0.1s ease",
+            }}
           />
           <Button
             onClick={handleSendMessage}

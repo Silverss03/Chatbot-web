@@ -3,6 +3,12 @@ import { getOpenAIInstance } from '@/lib/openai';
 import { ChatRequestBody, ChatResponseBody } from '@/types/chat';
 import { createClient } from '@/lib/supabase/server';
 
+// Cache to avoid excessive database queries for the same user in short time periods
+const userSubscriptionCache = new Map<string, {
+  data: any,
+  expiry: number
+}>();
+
 export async function POST(request: NextRequest) {
   try {
     // Get the current user to ensure they're authenticated
@@ -16,63 +22,82 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Check if the user has an active subscription
-    const { data: subscription, error: subError } = await supabase
-      .from('user_subscriptions')
-      .select('*, subscription_plans(*)')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-      
-    // If no subscription found, create a default one linked to existing Starter plan
-    let subscriptionData = subscription;
-    if (subError) {
-      // Use hardcoded Starter plan ID
-      const starterPlanId = "a0e1238a-4f59-4d7d-8e53-082b77868f1c";
-      
-      // Create a default subscription - note messages_used with 's'
-      const { error: insertError } = await supabase
+    // Check cache first for subscription data
+    const now = Date.now();
+    const cachedSubscription = userSubscriptionCache.get(user.id);
+    
+    let subscriptionData;
+    
+    if (cachedSubscription && cachedSubscription.expiry > now) {
+      // Use cached data if available and not expired
+      console.log("Using cached subscription data");
+      subscriptionData = cachedSubscription.data;
+    } else {
+      // Otherwise, query the database
+      const { data: subscription, error: subError } = await supabase
         .from('user_subscriptions')
-        .insert({
-          user_id: user.id,
-          plan_id: starterPlanId,
-          start_date: new Date().toISOString(),
-          is_active: true,
-          messages_used: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select();
+        .select('*, subscription_plans(*)')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
       
-      if (insertError) {
-        console.error("Error creating default subscription:", insertError);
-        return NextResponse.json(
-          { 
-            error: 'Error setting up user subscription',
-            details: insertError?.message || "Unknown database error" 
-          }, 
-          { status: 500 }
-        );
-      } else {
-        // Refresh the subscription data
-        const { data: newSubscription } = await supabase
+      // If no subscription found, create a default one linked to existing Starter plan
+      if (subError) {
+        // Use hardcoded Starter plan ID
+        const starterPlanId = "a0e1238a-4f59-4d7d-8e53-082b77868f1c";
+        
+        // Create a default subscription - note messages_used with 's'
+        const { error: insertError } = await supabase
           .from('user_subscriptions')
-          .select('*, subscription_plans(*)')
-          .eq('user_id', user.id)
-          .eq('is_active', true)
-          .single();
-          
-        if (newSubscription) {
-          subscriptionData = newSubscription;
-        } else {
+          .insert({
+            user_id: user.id,
+            plan_id: starterPlanId,
+            start_date: new Date().toISOString(),
+            is_active: true,
+            messages_used: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select();
+        
+        if (insertError) {
+          console.error("Error creating default subscription:", insertError);
           return NextResponse.json(
-            { error: 'Could not retrieve subscription information' }, 
+            { 
+              error: 'Error setting up user subscription',
+              details: insertError?.message || "Unknown database error" 
+            }, 
             { status: 500 }
           );
+        } else {
+          // Refresh the subscription data
+          const { data: newSubscription } = await supabase
+            .from('user_subscriptions')
+            .select('*, subscription_plans(*)')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .single();
+            
+          if (newSubscription) {
+            subscriptionData = newSubscription;
+          } else {
+            return NextResponse.json(
+              { error: 'Could not retrieve subscription information' }, 
+              { status: 500 }
+            );
+          }
         }
+      } else {
+        subscriptionData = subscription;
       }
+      
+      // Update cache with new data (valid for 5 minutes)
+      userSubscriptionCache.set(user.id, {
+        data: subscriptionData,
+        expiry: now + 5 * 60 * 1000
+      });
     }
     
     // Check for Starter tier message limit - using correct field name and path
@@ -141,6 +166,15 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString()
         })
         .eq('id', subscriptionData.id);
+        
+      // Update the cache with incremented message count
+      if (userSubscriptionCache.has(user.id)) {
+        const cached = userSubscriptionCache.get(user.id);
+        if (cached) {
+          cached.data.messages_used = newMessageCount;
+          userSubscriptionCache.set(user.id, cached);
+        }
+      }
     }
 
     // Check if this message brought user to their limit

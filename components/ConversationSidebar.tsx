@@ -40,10 +40,6 @@ export function ConversationSidebar({
       setError(null);
       
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setError("Vui lòng đăng nhập để xem các cuộc trò chuyện");
-        return;
-      }
       
       const { data, error } = await supabase
         .from("conversations")

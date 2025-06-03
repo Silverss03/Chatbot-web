@@ -10,6 +10,20 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+  
+  /* Responsive utilities */
+  .mobile-only {
+    @apply block md:hidden;
+  }
+  
+  .desktop-only {
+    @apply hidden md:block;
+  }
+  
+  /* Fix sidebar on mobile */
+  .responsive-sidebar {
+    @apply fixed md:relative;
+  }
 }
 
 @layer components {
@@ -33,6 +47,22 @@ body {
 
   .chat-input-container {
     @apply border-t border-[#e5e7eb] p-4 bg-white;
+  }
+  
+  /* Add responsive padding for chat messages */
+  .chat-message {
+    @apply p-3 md:p-4;
+  }
+  
+  /* Responsive chat input */
+  .chat-input-wrapper {
+    @apply flex space-x-2;
+  }
+  
+  @media (max-width: 640px) {
+    .chat-input-wrapper {
+      @apply flex-col space-y-2 space-x-0;
+    }
   }
 }
 

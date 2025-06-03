@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { User, Bot, MessageSquare } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { ConversationSidebar } from "@/components/ConversationSidebar";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 // Define message type
 interface Message {
@@ -42,6 +43,10 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(true);
+  // Check if we're on mobile
+  const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+  // Auto-hide sidebar on mobile by default
+  const [isMobileView, setIsMobileView] = useState(isMobile);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -49,6 +54,27 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
   
   // Add a state for sharing conversations with the sidebar
   const [conversationList, setConversationList] = useState(initialConversations);
+  
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobileView(mobile);
+      
+      // Auto-hide sidebar on mobile
+      if (mobile && sidebarVisible) {
+        setSidebarVisible(false);
+      } else if (!mobile && !sidebarVisible) {
+        setSidebarVisible(true);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    // Initial check
+    handleResize();
+    
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Improved loadConversation function with better debugging
   const loadConversation = async (conversationId: string) => {
@@ -282,6 +308,10 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
   // Handle sidebar visibility toggle
   const handleSidebarToggle = (isVisible: boolean) => {
     setSidebarVisible(isVisible);
+    // On mobile, when showing sidebar, automatically scroll to top
+    if (isVisible && isMobileView) {
+      window.scrollTo(0, 0);
+    }
   };
   
   return (
@@ -289,8 +319,20 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
       {/* Conversation Sidebar */}
       <ConversationSidebar 
         currentConversationId={currentConversationId}
-        onSelectConversation={selectConversation}
-        onCreateNewConversation={createNewConversation}
+        onSelectConversation={(id) => {
+          selectConversation(id);
+          // Auto-hide sidebar on mobile after selection
+          if (isMobileView) {
+            setSidebarVisible(false);
+          }
+        }}
+        onCreateNewConversation={() => {
+          createNewConversation();
+          // Auto-hide sidebar on mobile after creating new conversation
+          if (isMobileView) {
+            setSidebarVisible(false);
+          }
+        }}
         initialConversations={conversationList}
         fetchConversations={fetchConversations}
         isVisible={sidebarVisible}
@@ -301,11 +343,26 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
       <div 
         className="flex flex-col h-full transition-all duration-300 ease-in-out"
         style={{
-          marginLeft: sidebarVisible ? '256px' : '0',
-          width: sidebarVisible ? 'calc(100% - 256px)' : '100%'
+          marginLeft: sidebarVisible && !isMobileView ? '256px' : '0',
+          width: sidebarVisible && !isMobileView ? 'calc(100% - 256px)' : '100%'
         }}
         ref={chatContainerRef}
       >
+        {/* Mobile sidebar toggle button at the top */}
+        {isMobileView && !sidebarVisible && (
+          <div className="p-2 border-b bg-white">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleSidebarToggle(true)}
+              className="flex items-center"
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Lịch sử chat
+            </Button>
+          </div>
+        )}
+        
         {/* Message display area */}
         <div className="flex-1 overflow-y-auto p-4">
           {isLoadingConversation ? (

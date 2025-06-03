@@ -149,11 +149,11 @@ export function ConversationSidebar({
         </button>
       )}
       
-      {/* Sidebar */}
+      {/* Sidebar with responsive styles */}
       <div 
-        className={`transition-all duration-300 ease-in-out border-r bg-gray-50 flex flex-col absolute left-0 top-0 bottom-0 z-40`}
+        className={`transition-all duration-300 ease-in-out border-r bg-gray-50 flex flex-col absolute left-0 top-0 bottom-0 z-40 md:z-auto`}
         style={{
-          width: sidebarVisible ? '256px' : '0',
+          width: sidebarVisible ? (window.innerWidth < 768 ? '100%' : '256px') : '0',
           opacity: sidebarVisible ? 1 : 0,
           overflow: sidebarVisible ? 'auto' : 'hidden',
           visibility: sidebarVisible ? 'visible' : 'hidden'

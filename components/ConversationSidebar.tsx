@@ -36,7 +36,22 @@ export function ConversationSidebar({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(isVisible);
+  // Add state for viewport width
+  const [isMobileView, setIsMobileView] = useState(false);
   const supabase = createClient();
+
+  // Check viewport width on client side only
+  useEffect(() => {
+    // Now it's safe to access window
+    setIsMobileView(window.innerWidth < 768);
+    
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth < 768);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Update internal state when prop changes
   useEffect(() => {
@@ -149,11 +164,11 @@ export function ConversationSidebar({
         </button>
       )}
       
-      {/* Sidebar with responsive styles */}
+      {/* Sidebar with responsive styles - fixed for SSR */}
       <div 
         className={`transition-all duration-300 ease-in-out border-r bg-gray-50 flex flex-col absolute left-0 top-0 bottom-0 z-40 md:z-auto`}
         style={{
-          width: sidebarVisible ? (window.innerWidth < 768 ? '100%' : '256px') : '0',
+          width: sidebarVisible ? (isMobileView ? '100%' : '256px') : '0',
           opacity: sidebarVisible ? 1 : 0,
           overflow: sidebarVisible ? 'auto' : 'hidden',
           visibility: sidebarVisible ? 'visible' : 'hidden'

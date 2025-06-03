@@ -41,6 +41,7 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
   const [error, setError] = useState<string | null>(null);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
+  const [sidebarVisible, setSidebarVisible] = useState(true);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -278,19 +279,33 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
     }
   }, [initialConversations]);
   
+  // Handle sidebar visibility toggle
+  const handleSidebarToggle = (isVisible: boolean) => {
+    setSidebarVisible(isVisible);
+  };
+  
   return (
-    <div className="flex h-full w-full">
-      {/* Conversation Sidebar with explicit fetch function */}
+    <div className="flex h-full w-full relative">
+      {/* Conversation Sidebar */}
       <ConversationSidebar 
         currentConversationId={currentConversationId}
         onSelectConversation={selectConversation}
         onCreateNewConversation={createNewConversation}
         initialConversations={conversationList}
         fetchConversations={fetchConversations}
+        isVisible={sidebarVisible}
+        onToggleVisibility={handleSidebarToggle}
       />
       
-      {/* Chat Area */}
-      <div className="flex-1 flex flex-col h-full min-h-[500px]" ref={chatContainerRef}>
+      {/* Chat Area with proper transitions */}
+      <div 
+        className="flex flex-col h-full transition-all duration-300 ease-in-out"
+        style={{
+          marginLeft: sidebarVisible ? '256px' : '0',
+          width: sidebarVisible ? 'calc(100% - 256px)' : '100%'
+        }}
+        ref={chatContainerRef}
+      >
         {/* Message display area */}
         <div className="flex-1 overflow-y-auto p-4">
           {isLoadingConversation ? (

@@ -164,11 +164,11 @@ export function ConversationSidebar({
         </button>
       )}
       
-      {/* Sidebar with responsive styles - fixed for SSR */}
+      {/* Sidebar with improved mobile responsive styles */}
       <div 
-        className={`transition-all duration-300 ease-in-out border-r bg-gray-50 flex flex-col absolute left-0 top-0 bottom-0 z-40 md:z-auto`}
+        className={`transition-all duration-300 ease-in-out border-r bg-gray-50 flex flex-col fixed md:absolute left-0 top-0 bottom-0 z-40`}
         style={{
-          width: sidebarVisible ? (isMobileView ? '100%' : '256px') : '0',
+          width: sidebarVisible ? (isMobileView ? '100vw' : '256px') : '0',
           opacity: sidebarVisible ? 1 : 0,
           overflow: sidebarVisible ? 'auto' : 'hidden',
           visibility: sidebarVisible ? 'visible' : 'hidden'

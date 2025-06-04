@@ -10,19 +10,43 @@ body {
   .text-balance {
     text-wrap: balance;
   }
-  
+
   /* Responsive utilities */
   .mobile-only {
     @apply block md:hidden;
   }
-  
+
   .desktop-only {
     @apply hidden md:block;
   }
-  
+
   /* Fix sidebar on mobile */
   .responsive-sidebar {
     @apply fixed md:relative;
+  }
+
+  /* Make sure sidebar doesn't cause overflow */
+  .sidebar-container {
+    @apply h-full;
+    position: relative;
+  }
+
+  /* Improve mobile layout */
+  @media (max-width: 768px) {
+    body {
+      overflow-x: hidden;
+    }
+
+    .main-chat-container {
+      min-height: calc(100vh - 130px);
+      height: auto !important;
+    }
+
+    /* Fix scrolling issues on mobile */
+    .chat-messages-container {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
   }
 }
 
@@ -48,17 +72,17 @@ body {
   .chat-input-container {
     @apply border-t border-[#e5e7eb] p-4 bg-white;
   }
-  
+
   /* Add responsive padding for chat messages */
   .chat-message {
     @apply p-3 md:p-4;
   }
-  
+
   /* Responsive chat input */
   .chat-input-wrapper {
     @apply flex space-x-2;
   }
-  
+
   @media (max-width: 640px) {
     .chat-input-wrapper {
       @apply flex-col space-y-2 space-x-0;

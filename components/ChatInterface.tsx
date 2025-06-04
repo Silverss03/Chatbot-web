@@ -339,18 +339,23 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
         onToggleVisibility={handleSidebarToggle}
       />
       
-      {/* Chat Area with proper transitions */}
+      {/* Chat Area with proper mobile layout */}
       <div 
-        className="flex flex-col h-full transition-all duration-300 ease-in-out"
+        className="flex flex-col h-full transition-all duration-300 ease-in-out absolute md:relative w-full"
         style={{
-          marginLeft: sidebarVisible && !isMobileView ? '256px' : '0',
-          width: sidebarVisible && !isMobileView ? 'calc(100% - 256px)' : '100%'
+          marginLeft: isMobileView ? 0 : (sidebarVisible ? '256px' : 0),
+          width: isMobileView ? '100%' : (sidebarVisible ? 'calc(100% - 256px)' : '100%'),
+          left: 0,
+          top: 0,
+          bottom: 0,
+          right: 0,
+          zIndex: sidebarVisible && isMobileView ? 0 : 30
         }}
         ref={chatContainerRef}
       >
         {/* Mobile sidebar toggle button at the top */}
         {isMobileView && !sidebarVisible && (
-          <div className="p-2 border-b bg-white">
+          <div className="p-2 border-b bg-white sticky top-0 z-10">
             <Button 
               variant="outline" 
               size="sm" 

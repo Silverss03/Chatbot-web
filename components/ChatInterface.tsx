@@ -55,6 +55,28 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
   // Add a state for sharing conversations with the sidebar
   const [conversationList, setConversationList] = useState(initialConversations);
   
+  // Track real viewport height for mobile browsers
+  const [viewportHeight, setViewportHeight] = useState('100%');
+  
+  // Update viewport height for mobile browsers (especially iOS Safari)
+  useEffect(() => {
+    const updateViewportHeight = () => {
+      setViewportHeight(`${window.innerHeight}px`);
+    };
+    
+    // Initial update
+    updateViewportHeight();
+    
+    // Update on resize and orientation change
+    window.addEventListener('resize', updateViewportHeight);
+    window.addEventListener('orientationchange', updateViewportHeight);
+    
+    return () => {
+      window.removeEventListener('resize', updateViewportHeight);
+      window.removeEventListener('orientationchange', updateViewportHeight);
+    };
+  }, []);
+  
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
@@ -315,7 +337,7 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
   };
   
   return (
-    <div className="flex h-full w-full relative">
+    <div className="flex h-full w-full relative" style={{ height: viewportHeight }}>
       {/* Conversation Sidebar */}
       <ConversationSidebar 
         currentConversationId={currentConversationId}
@@ -339,23 +361,26 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
         onToggleVisibility={handleSidebarToggle}
       />
       
-      {/* Chat Area with proper mobile layout */}
+      {/* Chat Area with improved mobile layout */}
       <div 
-        className="flex flex-col h-full transition-all duration-300 ease-in-out absolute md:relative w-full"
+        className={`flex flex-col transition-all duration-300 ease-in-out ${
+          sidebarVisible && isMobileView ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
         style={{
-          marginLeft: isMobileView ? 0 : (sidebarVisible ? '256px' : 0),
-          width: isMobileView ? '100%' : (sidebarVisible ? 'calc(100% - 256px)' : '100%'),
-          left: 0,
+          position: isMobileView ? 'fixed' : 'relative',
+          left: 0, 
+          right: 0,
           top: 0,
           bottom: 0,
-          right: 0,
-          zIndex: sidebarVisible && isMobileView ? 0 : 30
+          width: '100%', 
+          height: viewportHeight,
+          zIndex: isMobileView ? (sidebarVisible ? 1 : 9997) : 'auto',
         }}
         ref={chatContainerRef}
       >
-        {/* Mobile sidebar toggle button at the top */}
+        {/* Mobile sidebar toggle button with higher z-index */}
         {isMobileView && !sidebarVisible && (
-          <div className="p-2 border-b bg-white sticky top-0 z-10">
+          <div className="p-2 border-b bg-white sticky top-0 z-20">
             <Button 
               variant="outline" 
               size="sm" 
@@ -368,8 +393,8 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
           </div>
         )}
         
-        {/* Message display area */}
-        <div className="flex-1 overflow-y-auto p-4">
+        {/* Message display area with iOS momentum scrolling */}
+        <div className="flex-1 overflow-y-auto -webkit-overflow-scrolling-touch p-4">
           {isLoadingConversation ? (
             <div className="flex items-center justify-center h-full">
               <LoadingDots className="text-gray-400" />

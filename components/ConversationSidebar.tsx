@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { PlusIcon, RefreshCw, MessageSquare, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale'; // Import Vietnamese locale
+import { vi } from 'date-fns/locale';
 import { createClient } from "@/lib/supabase/client";
 
 interface Conversation {
@@ -38,6 +38,8 @@ export function ConversationSidebar({
   const [sidebarVisible, setSidebarVisible] = useState(isVisible);
   // Add state for viewport width
   const [isMobileView, setIsMobileView] = useState(false);
+  // Get real viewport height for mobile browsers (iOS Safari fix)
+  const [viewportHeight, setViewportHeight] = useState('100%');
   const supabase = createClient();
 
   // Check viewport width on client side only
@@ -151,31 +153,53 @@ export function ConversationSidebar({
       : title;
   };
 
+  // Get real viewport height for mobile browsers (iOS Safari fix)
+  useEffect(() => {
+    const updateViewportHeight = () => {
+      // Use window.innerHeight instead of vh units for mobile browsers
+      setViewportHeight(`${window.innerHeight}px`);
+    };
+    
+    // Initial update
+    updateViewportHeight();
+    
+    // Update on resize and orientation change
+    window.addEventListener('resize', updateViewportHeight);
+    window.addEventListener('orientationchange', updateViewportHeight);
+    
+    return () => {
+      window.removeEventListener('resize', updateViewportHeight);
+      window.removeEventListener('orientationchange', updateViewportHeight);
+    };
+  }, []);
+
   return (
     <div className="h-full">
       {/* Toggle button - visible when sidebar is hidden */}
       {!sidebarVisible && (
         <button 
           onClick={toggleSidebar}
-          className="absolute left-0 top-1/2 -translate-y-1/2 bg-white p-2 rounded-r-md border border-l-0 shadow-md z-50"
+          className="fixed left-0 top-1/2 -translate-y-1/2 bg-white p-2 rounded-r-md border border-l-0 shadow-md z-[9999]"
           aria-label="Show sidebar"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
       )}
       
-      {/* Sidebar with improved mobile responsive styles */}
+      {/* Sidebar with mobile-first approach */}
       <div 
-        className={`transition-all duration-300 ease-in-out border-r bg-gray-50 flex flex-col fixed md:absolute left-0 top-0 bottom-0 z-40`}
+        className="transition-all duration-300 ease-in-out border-r bg-gray-50 flex flex-col fixed inset-0 z-[9998]"
         style={{
-          width: sidebarVisible ? (isMobileView ? '100vw' : '256px') : '0',
+          width: sidebarVisible ? (isMobileView ? '100%' : '256px') : '0',
           opacity: sidebarVisible ? 1 : 0,
           overflow: sidebarVisible ? 'auto' : 'hidden',
-          visibility: sidebarVisible ? 'visible' : 'hidden'
+          visibility: sidebarVisible ? 'visible' : 'hidden',
+          height: viewportHeight,
+          maxHeight: viewportHeight
         }}
       >
-        {/* Header */}
-        <div className="p-4 border-b bg-white flex justify-between items-center">
+        {/* Header with higher z-index to stay on top */}
+        <div className="p-4 border-b bg-white flex justify-between items-center sticky top-0 z-10">
           <div className="flex-1">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-semibold text-lg">Lịch sử chat</h2>
@@ -208,8 +232,8 @@ export function ConversationSidebar({
           </Button>
         </div>
 
-        {/* Conversation List */}
-        <div className="flex-1 overflow-y-auto">
+        {/* Conversation List with momentum scrolling for iOS */}
+        <div className="flex-1 overflow-y-auto -webkit-overflow-scrolling-touch">
           {error && (
             <div className="p-3 m-3 text-sm bg-red-50 text-red-700 rounded-md">
               {error}

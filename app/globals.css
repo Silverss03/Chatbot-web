@@ -48,6 +48,26 @@ body {
       -webkit-overflow-scrolling: touch;
     }
   }
+
+  /* iOS Safari specific fixes */
+  @supports (-webkit-touch-callout: none) {
+
+    .h-screen,
+    .h-full {
+      height: -webkit-fill-available;
+    }
+
+    .fixed {
+      position: fixed;
+    }
+  }
+
+  /* Fix for mobile viewport height issues */
+  .mobile-full-height {
+    height: 100%;
+    height: -webkit-fill-available;
+    height: stretch;
+  }
 }
 
 @layer components {
@@ -87,6 +107,12 @@ body {
     .chat-input-wrapper {
       @apply flex-col space-y-2 space-x-0;
     }
+  }
+
+  /* Enhanced mobile styles */
+  .mobile-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    margin-bottom: env(safe-area-inset-bottom, 0);
   }
 }
 

@@ -361,20 +361,22 @@ export function ChatInterface({ initialConversations = [] }: ChatInterfaceProps)
         onToggleVisibility={handleSidebarToggle}
       />
       
-      {/* Chat Area with improved mobile layout */}
+      {/* Chat Area with improved desktop and mobile layout */}
       <div 
         className={`flex flex-col transition-all duration-300 ease-in-out ${
           sidebarVisible && isMobileView ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
         style={{
           position: isMobileView ? 'fixed' : 'relative',
-          left: 0, 
-          right: 0,
+          left: isMobileView ? 0 : 'auto', 
+          right: isMobileView ? 0 : 'auto',
           top: 0,
           bottom: 0,
-          width: '100%', 
+          width: isMobileView ? '100%' : 'auto', 
           height: viewportHeight,
           zIndex: isMobileView ? (sidebarVisible ? 1 : 9997) : 'auto',
+          flex: '1 1 auto',
+          overflow: 'hidden'
         }}
         ref={chatContainerRef}
       >

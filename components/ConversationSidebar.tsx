@@ -174,7 +174,11 @@ export function ConversationSidebar({
   }, []);
 
   return (
-    <div className="h-full">
+    <div className="h-full" style={{ 
+      flexShrink: 0, 
+      width: sidebarVisible ? (isMobileView ? '100%' : '256px') : '0',
+      transition: 'width 0.3s ease-in-out'
+    }}>
       {/* Toggle button - visible when sidebar is hidden */}
       {!sidebarVisible && (
         <button 
@@ -188,7 +192,9 @@ export function ConversationSidebar({
       
       {/* Sidebar with mobile-first approach */}
       <div 
-        className="transition-all duration-300 ease-in-out border-r bg-gray-50 flex flex-col fixed inset-0 z-[9998]"
+        className={`transition-all duration-300 ease-in-out border-r bg-gray-50 flex flex-col ${
+          isMobileView ? 'fixed inset-0' : 'h-full'
+        } z-[9998]`}
         style={{
           width: sidebarVisible ? (isMobileView ? '100%' : '256px') : '0',
           opacity: sidebarVisible ? 1 : 0,

@@ -110,7 +110,7 @@ export default async function TransactionPage({
     console.log("Using existing transaction reference:", transactionRef);
   } else {
     // Generate a new unique transaction reference with both letters and numbers
-    const randomChars = generateRandomString(5); // Still 5 chars, but guaranteed to have letters & numbers
+    const randomChars = generateRandomString(4); // Changed from 5 to 4 chars
     transactionRef = `TXN${randomChars}`;
     
     // Store the transaction reference in the database for later matching with webhook

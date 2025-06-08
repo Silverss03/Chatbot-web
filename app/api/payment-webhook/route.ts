@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     
     // Define multiple patterns to extract transaction references
     // Update patterns to accommodate format without hyphen
-    const bankContentPattern = /-?TXN[a-zA-Z0-9]+(?=-)?/; // Match TXN with or without hyphen
+    const bankContentPattern = /-?TXN[a-zA-Z0-9]{4}(?=-)?/; // Match TXN with or without hyphen
     const standardPattern = /TXN-?\d+-?[a-zA-Z0-9]{8}/; // Match old format with optional hyphens
     const loosePattern = /TXN[a-zA-Z0-9-]*/; // Match any TXN followed by alphanumeric/hyphens
     
